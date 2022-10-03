@@ -55,6 +55,7 @@ class VaspFactory(HasStorage):
         self.storage.kpoints_kwargs = kwargs
 
     def _prepare_job(self, job, structure):
+        job.structure = structure
         job.set_encut(
                 *self.storage.get('encut_args', ()),
                 **self.storage.get('encut_kwargs', {})
