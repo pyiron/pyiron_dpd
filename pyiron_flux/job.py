@@ -62,9 +62,7 @@ class MlipFactory(HasHDF):
         return job
 
     def _to_hdf(self, hdf):
-        hdf['project_path'] = self.project
         hdf['potential'] = self.potential
 
     def _from_hdf(self, hdf, version=None):
-        self.project = Project(hdf['project_path'])
         self.potential = hdf['potential']
