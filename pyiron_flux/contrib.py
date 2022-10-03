@@ -53,8 +53,8 @@ class StaticStructureFlow(WorkFlow):
             hamilton = self.job.hamilton
             tab.db_filter_function = lambda df: df.hamilton == hamilton
             tab.add.get_energy_pot
-            tab.add.get_energy_pot_per_atom
             tab.add.get_elements
+            tab.add['name'] = lambda j: j['user/name']
             return tab
         return get_table(
                 self.project, "structure_table", add,
