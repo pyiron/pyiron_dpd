@@ -1,4 +1,5 @@
 from pyiron_base import HasHDF, GenericJob
+from pyiron_atomistics import Atoms
 from pyiron_contrib import Project
 
 import contextlib
@@ -30,12 +31,14 @@ class MlipFactory(HasHDF):
     def hamilton(self):
         return "LammpsMlip"
 
-    def _prepare_job(self, job):
+    def _prepare_job(self, job, structure):
+        job.structure = structure
         job.potential = self.potential
         return job
 
     def run(self,
             name: str, modify: Callable[[GenericJob], GenericJob],
+            structure: Atoms,
             delete_existing_job=False, delete_aborted_job=True
     ) -> Optional[GenericJob]:
 
@@ -51,7 +54,8 @@ class MlipFactory(HasHDF):
         )
         if not job.status.initialized: return job
 
-        job = self._prepare_job(job)
+        job = self._prepare_job(job, structure)
+        job = modify(job)
 
         with open('/dev/null', 'w') as f, contextlib.redirect_stdout(f):
             job.run()
