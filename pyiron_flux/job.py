@@ -22,9 +22,13 @@ class VaspFactory(HasStorage):
     def hamilton(self):
         return "Vasp"
 
-    def set_encut(*args, **kwargs):
+    def set_encut(self, *args, **kwargs):
         self.storage.encut_args = args
         self.storage.encut_kwargs = kwargs
+
+    def set_kpoints(self, *args, **kwargs):
+        self.storage.kpoints_args = args
+        self.storage.kpoints_kwargs = kwargs
 
     def _prepare_job(self, job, structure):
         job.set_encut(
