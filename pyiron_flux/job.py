@@ -19,6 +19,30 @@ class VaspFactory(HasStorage):
         self._project = value
 
     @property
+    def cores(self):
+        return self.storage.get('cores', None)
+
+    @cores.setter
+    def cores(self, cores):
+        self.storage.cores = cores
+
+    @property
+    def runtime(self):
+        return self.storage.get('runtime', None)
+
+    @runtime.setter
+    def runtime(self, cores):
+        self.storage.runtime = cores
+
+    @property
+    def queue(self):
+        return self.storage.get('queue', None)
+
+    @queue.setter
+    def queue(self, cores):
+        self.storage.queue = cores
+
+    @property
     def hamilton(self):
         return "Vasp"
 
@@ -39,6 +63,9 @@ class VaspFactory(HasStorage):
                 *self.storage.get('kpoints_args', ()),
                 **self.storage.get('kpoints_kwargs', {})
         )
+        job.server.queue = self.queue
+        job.server.cores = self.cores
+        job.server.run_time = self.run_time
         return job
 
     def run(self,
