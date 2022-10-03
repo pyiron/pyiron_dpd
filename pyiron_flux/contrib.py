@@ -29,8 +29,13 @@ class StaticStructureFlow(WorkFlow):
     structures = StructureProperty('structures')
 
     def run(self, delete_existing_job=False, delete_aborted_job=True):
-        self.job.project = self.project
-        for i, structure in enumerate(self.structures.iter_structures()):
+        self.job.project = self.project.create_group('calculations')
+        istructures = tqdm(
+                self.structures.iter_structures(),
+                desc="Structures",
+                total=self.structures.number_of_structures
+        )
+        for i, structure in enumerate(istructures):
             def modify(j):
                 j['user/name'] = self.structures['identifier', i]
                 j.calc_static()
