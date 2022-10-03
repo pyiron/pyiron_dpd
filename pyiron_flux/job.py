@@ -27,12 +27,12 @@ class VaspFactory(HasStorage):
         self.storage.cores = cores
 
     @property
-    def runtime(self):
-        return self.storage.get('runtime', None)
+    def run_time(self):
+        return self.storage.get('run_time', None)
 
-    @runtime.setter
-    def runtime(self, cores):
-        self.storage.runtime = cores
+    @run_time.setter
+    def run_time(self, cores):
+        self.storage.run_time = cores
 
     @property
     def queue(self):
