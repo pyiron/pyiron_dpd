@@ -54,12 +54,15 @@ class StaticStructureFlow(WorkFlow):
             tab.db_filter_function = lambda df: df.hamilton == hamilton
             tab.add.get_energy_pot
             tab.add.get_elements
+            tab.add['N'] = lambda j: j['input/structure/indices'].shape[0]
             tab.add['name'] = lambda j: j['user/name']
             return tab
-        return get_table(
+        df = get_table(
                 self.project, "structure_table", add,
                 delete_existing_job
         ).get_dataframe()
+        df['E'] = df.energy_pot
+        return df
 
 class SegregationFlow(WorkFlow):
     structure = ScalarProperty('structure')
