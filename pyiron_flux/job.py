@@ -51,6 +51,12 @@ class JobFactory(HasStorage, ABC):
     def hamilton(self):
         return self._get_hamilton()
 
+    def copy(self):
+        copy = self.__class__()
+        copy.storage = self.storage.copy()
+        copy.project = self.project
+        return copy
+
     def _prepare_job(self, job, structure):
         job = super()._prepare_job(self, job, structure)
         job.structure = structure
