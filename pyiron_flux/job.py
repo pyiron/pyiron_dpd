@@ -53,7 +53,8 @@ class JobFactory(HasStorage, ABC):
 
     def copy(self):
         copy = self.__class__()
-        copy.storage = self.storage.copy()
+        for k in self.storage:
+            copy.storage[k] = self.storage[k]
         copy.project = self.project
         return copy
 
