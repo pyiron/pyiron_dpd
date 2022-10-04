@@ -59,7 +59,6 @@ class JobFactory(HasStorage, ABC):
         return copy
 
     def _prepare_job(self, job, structure):
-        job = super()._prepare_job(self, job, structure)
         job.structure = structure
         job.server.queue = self.queue
         job.server.cores = self.cores
