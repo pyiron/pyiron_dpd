@@ -66,8 +66,10 @@ class JobFactory(HasStorage, ABC):
     ) -> Optional[GenericJob]:
 
         # short circuit if job already successfully ran
-        if name in self.project.list_nodes() \
-                and self.project.get_job_status(name) == 'finished':
+        if not delete_existing_job and (
+                name in self.project.list_nodes() \
+                    and self.project.get_job_status(name) == 'finished'
+        ):
             return None
 
         job = getattr(self.project.create.job, self.hamilton)(
