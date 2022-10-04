@@ -2,10 +2,11 @@ from pyiron_base import HasHDF, HasStorage, GenericJob
 from pyiron_atomistics import Atoms
 from pyiron_contrib import Project
 
+from abc import ABC, abstractmethod
 import contextlib
 from typing import Optional, Callable
 
-class VaspFactory(HasStorage):
+class JobFactory(HasStorage, ABC):
 
     def __init__(self):
         super().__init__()
@@ -42,28 +43,17 @@ class VaspFactory(HasStorage):
     def queue(self, cores):
         self.storage.queue = cores
 
+    @abstractmethod
+    def _get_hamilton(self):
+        pass
+
     @property
     def hamilton(self):
-        return "Vasp"
-
-    def set_encut(self, *args, **kwargs):
-        self.storage.encut_args = args
-        self.storage.encut_kwargs = kwargs
-
-    def set_kpoints(self, *args, **kwargs):
-        self.storage.kpoints_args = args
-        self.storage.kpoints_kwargs = kwargs
+        return self._get_hamilton()
 
     def _prepare_job(self, job, structure):
+        job = super()._prepare_job(self, job, structure)
         job.structure = structure
-        job.set_encut(
-                *self.storage.get('encut_args', ()),
-                **self.storage.get('encut_kwargs', {})
-        )
-        job.set_kpoints(
-                *self.storage.get('kpoints_args', ()),
-                **self.storage.get('kpoints_kwargs', {})
-        )
         job.server.queue = self.queue
         job.server.cores = self.cores
         job.server.run_time = self.run_time
@@ -80,7 +70,7 @@ class VaspFactory(HasStorage):
                 and self.project.get_job_status(name) == 'finished':
             return None
 
-        job = self.project.create.job.Vasp(
+        job = getattr(self.project.create.job, self.hamilton)(
                 name,
                 delete_existing_job=delete_existing_job,
                 delete_aborted_job=delete_aborted_job
@@ -92,6 +82,31 @@ class VaspFactory(HasStorage):
 
         with open('/dev/null', 'w') as f, contextlib.redirect_stdout(f):
             job.run()
+        return job
+
+class VaspFactory(JobFactory):
+
+    def set_encut(self, *args, **kwargs):
+        self.storage.encut_args = args
+        self.storage.encut_kwargs = kwargs
+
+    def set_kpoints(self, *args, **kwargs):
+        self.storage.kpoints_args = args
+        self.storage.kpoints_kwargs = kwargs
+
+    def _get_hamilton(self):
+        return "Vasp"
+
+    def _prepare_job(self, job, structure):
+        job = super()._prepare_job(self, job, structure)
+        job.set_encut(
+                *self.storage.get('encut_args', ()),
+                **self.storage.get('encut_kwargs', {})
+        )
+        job.set_kpoints(
+                *self.storage.get('kpoints_args', ()),
+                **self.storage.get('kpoints_kwargs', {})
+        )
         return job
 
 class MlipFactory(HasHDF):

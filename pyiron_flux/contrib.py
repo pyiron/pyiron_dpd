@@ -61,7 +61,6 @@ class StaticStructureFlow(WorkFlow):
                 delete_existing_job
         ).get_dataframe()
 
-
 class SegregationFlow(WorkFlow):
     structure = ScalarProperty('structure')
     bulk_reference = ScalarProperty('bulk_reference')
