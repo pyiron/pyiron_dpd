@@ -60,9 +60,12 @@ class JobFactory(HasStorage, ABC):
 
     def _prepare_job(self, job, structure):
         job.structure = structure
-        job.server.queue = self.queue
-        job.server.cores = self.cores
-        job.server.run_time = self.run_time
+        if self.queue is not None:
+            job.server.queue = self.queue
+        if self.cores is not None:
+            job.server.cores = self.cores
+        if self.run_time is not None:
+            job.server.run_time = self.run_time
         return job
 
     def run(self,
