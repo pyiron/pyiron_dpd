@@ -109,7 +109,7 @@ class VaspFactory(JobFactory):
         return "Vasp"
 
     def _prepare_job(self, job, structure):
-        job = super()._prepare_job(self, job, structure)
+        job = super()._prepare_job(job, structure)
         job.set_encut(
                 *self.storage.get('encut_args', ()),
                 **self.storage.get('encut_kwargs', {})
