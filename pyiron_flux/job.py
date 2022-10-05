@@ -95,7 +95,7 @@ class JobFactory(HasStorage, ABC):
             job.run()
         return job
 
-class VaspFactory(JobFactory):
+class DftFactory(JobFactory):
 
     def set_encut(self, *args, **kwargs):
         self.storage.encut_args = args
@@ -104,9 +104,6 @@ class VaspFactory(JobFactory):
     def set_kpoints(self, *args, **kwargs):
         self.storage.kpoints_args = args
         self.storage.kpoints_kwargs = kwargs
-
-    def _get_hamilton(self):
-        return "Vasp"
 
     def _prepare_job(self, job, structure):
         job = super()._prepare_job(job, structure)
@@ -119,6 +116,14 @@ class VaspFactory(JobFactory):
                 **self.storage.get('kpoints_kwargs', {})
         )
         return job
+
+class VaspFactory(DftFactory):
+    def _get_hamilton(self):
+        return 'Vasp'
+
+class SphinxFactory(DftFactory):
+    def _get_hamilton(self):
+        return 'Sphinx'
 
 class MlipFactory(JobFactory):
 
