@@ -118,8 +118,22 @@ class DftFactory(JobFactory):
         return job
 
 class VaspFactory(DftFactory):
+    def __init__(self):
+        super().__init__()
+        self.storage.incar = {}
+
+    @property
+    def incar(self):
+        return self.storage.incar
+
     def _get_hamilton(self):
         return 'Vasp'
+
+    def _prepare_job(self, job, structure):
+        job = super()._prepare_job(job, structure)
+        for k, v in self.incar.items():
+            job.input.incar[k] = v
+        return job
 
 class SphinxFactory(DftFactory):
     def _get_hamilton(self):
