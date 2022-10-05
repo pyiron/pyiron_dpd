@@ -105,6 +105,10 @@ class DftFactory(JobFactory):
         self.storage.kpoints_args = args
         self.storage.kpoints_kwargs = kwargs
 
+    def set_occupancy_smearing(self, *args, **kwargs):
+        self.storage.occupancy_smearing_args = args
+        self.storage.occupancy_smearing_kwargs = kwargs
+
     def _prepare_job(self, job, structure):
         job = super()._prepare_job(job, structure)
         job.set_encut(
@@ -114,6 +118,10 @@ class DftFactory(JobFactory):
         job.set_kpoints(
                 *self.storage.get('kpoints_args', ()),
                 **self.storage.get('kpoints_kwargs', {})
+        )
+        job.set_occupancy_smearing(
+                *self.storage.get('occupancy_smearing_args', ()),
+                **self.storage.get('occupancy_smearing_kwargs', {})
         )
         return job
 
