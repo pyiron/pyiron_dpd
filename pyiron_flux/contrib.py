@@ -52,7 +52,8 @@ class StaticStructureFlow(WorkFlow):
             tab.analysis_project = self.project
             hamilton = self.job.hamilton
             tab.db_filter_function = lambda df: df.hamilton == hamilton
-            tab.add.get_energy_pot
+            # needed because sphinx weirdness
+            tab.add['energy_pot'] = lambda j: j['output/generic']['energy_pot'][-1]
             tab.add.get_elements
             tab.add['N'] = lambda j: j['input/structure/indices'].shape[0]
             tab.add['name'] = lambda j: j['user/name']
