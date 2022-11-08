@@ -10,6 +10,7 @@ class JobFactory(HasStorage, ABC):
 
     def __init__(self):
         super().__init__()
+        self.storage.create_group('input')
 
     @property
     def project(self):
@@ -58,22 +59,28 @@ class JobFactory(HasStorage, ABC):
         copy.project = self.project
         return copy
 
+    def set_input(self, **kwargs):
+        for key, value in kwargs.items():
+            self.storage.input[key] = value
+
     def _prepare_job(self, job, structure):
-        job.structure = structure
+        if structure is not None:
+            job.structure = structure
         if self.queue is not None:
             job.server.queue = self.queue
         if self.cores is not None:
             job.server.cores = self.cores
         if self.run_time is not None:
             job.server.run_time = self.run_time
+        for k, v in self.storage.input.items():
+            job.input[k] = v
         return job
 
-    def run(self,
-            name: str, modify: Callable[[GenericJob], GenericJob],
-            structure: Atoms,
-            delete_existing_job=False, delete_aborted_job=True
+    def make(self,
+             name: str, modify: Callable[[GenericJob], GenericJob],
+             structure: Atoms,
+             delete_existing_job=False, delete_aborted_job=True
     ) -> Optional[GenericJob]:
-
         # short circuit if job already successfully ran
         if not delete_existing_job and (
                 name in self.project.list_nodes() \
@@ -90,10 +97,32 @@ class JobFactory(HasStorage, ABC):
 
         job = self._prepare_job(job, structure)
         job = modify(job)
+        return job
 
+    def run(self,
+            name: str, modify: Callable[[GenericJob], GenericJob],
+            structure: Atoms,
+            delete_existing_job=False, delete_aborted_job=True
+    ) -> Optional[GenericJob]:
+
+        job = self.make(
+                name, modify, structure,
+                delete_existing_job, delete_aborted_job
+        )
+        if job is None:
+            return
         with open('/dev/null', 'w') as f, contextlib.redirect_stdout(f):
             job.run()
         return job
+
+class GenericJobFactory(JobFactory):
+
+    def __init__(self, hamilton):
+        super().__init__()
+        self.storage.hamilton = hamilton
+
+    def _get_hamilton(self):
+        return self.storage.hamilton
 
 class DftFactory(JobFactory):
 
@@ -109,6 +138,13 @@ class DftFactory(JobFactory):
         self.storage.occupancy_smearing_args = args
         self.storage.occupancy_smearing_kwargs = kwargs
 
+    def set_empty_states(self, states_per_atom):
+        self.storage.empty_states_per_atom = states_per_atom
+
+    def _prepare_job(self, job, structure):
+        super()._prepare_job(job, structure)
+        return job
+
     def _prepare_job(self, job, structure):
         job = super()._prepare_job(job, structure)
         job.set_encut(
@@ -123,16 +159,23 @@ class DftFactory(JobFactory):
                 *self.storage.get('occupancy_smearing_args', ()),
                 **self.storage.get('occupancy_smearing_kwargs', {})
         )
+        if 'empty_states_per_atom' in self.storage:
+            job.input['EmptyStates'] = \
+                    len(structure) * self.storage.empty_states_per_atom + 3
         return job
 
 class VaspFactory(DftFactory):
     def __init__(self):
         super().__init__()
         self.storage.incar = {}
+        self.storage.nband_nelec_map = None
 
     @property
     def incar(self):
         return self.storage.incar
+
+    def enable_nband_hack(self, nelec: dict):
+        self.storage.nband_nelec_map = nelec
 
     def _get_hamilton(self):
         return 'Vasp'
@@ -140,7 +183,14 @@ class VaspFactory(DftFactory):
     def _prepare_job(self, job, structure):
         job = super()._prepare_job(job, structure)
         for k, v in self.incar.items():
-            job.input.incar[k] = v
+            job.input_.incar[k] = v
+        if self.storage.nband_nelec_map is not None:
+            # weird structure sometimes require more bands
+            # HACK: for Mg/Al/Ca, since Ca needs a lot of electrons
+            elems = {'Mg', 'Al', 'Ca'}
+            if elems.union(set(structure.get_chemical_symbols())) == elems:
+                nelect = sum(self.storage.nband_nelec_map[el] for el in structure.get_chemical_symbols())
+                j.input.incar['NBANDS'] = nelect + len(structure)
         return job
 
 class SphinxFactory(DftFactory):
