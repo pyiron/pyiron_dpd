@@ -48,13 +48,24 @@ class StaticStructureFlow(WorkFlow):
             )
 
     def analyze(self, delete_existing_job=False):
+        def get_elements(j):
+            species = j['input/structure/species']
+            return {s: sum(j['output/generic/indices'][-1]==i)
+                        for i, s in enumerate(species)}
+        from pyiron_atomistics.table.datamining import TableJob
+        flst = TableJob._system_function_lst
+        flst = [f for f in flst if f.__name__ != "get_elements"]
+        flst.append(get_elements)
+        TableJob._system_function_lst = flst
         def add(tab):
             tab.analysis_project = self.project
             hamilton = self.job.hamilton
             tab.db_filter_function = lambda df: df.hamilton == hamilton
             # needed because sphinx weirdness
             tab.add['energy_pot'] = lambda j: j['output/generic']['energy_pot'][-1]
+            # quick hack for messed up get_elements
             tab.add.get_elements
+            # tab.add['elements'] = get_elements
             tab.add['N'] = lambda j: j['input/structure/indices'].shape[0]
             tab.add['name'] = lambda j: j['user/name']
             return tab
