@@ -68,7 +68,7 @@ class VaspNbandsTool(RepairTool):
         n_elect = old_job.get_nelect()
         # double free states
         new_job.set_empty_states(
-                math.ceil((old_states - n_elect) * self._state_factor)
+                math.ceil((old_states - n_elect//2) * self._state_factor)
         )
 
     def hamilton(self):
