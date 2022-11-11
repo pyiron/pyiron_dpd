@@ -1,13 +1,20 @@
 from numbers import Integral
+import string
 from itertools import (
     combinations,
     starmap
 )
 
 import numpy as np
+import scipy.stats as ss
+import scipy.signal as si
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pyace
+from pyiron_base.state.logger import logger
+logger.setLevel(100)
+from sklearn.decomposition import PCA
 from tqdm.auto import tqdm
 
 from .base import (
@@ -133,6 +140,78 @@ class SegregationFlow(WorkFlow):
     normalization_unit = ScalarProperty('normalization_unit')
 
     segregations = StructureProperty('segregations')
+
+    def suggest_sites(self, num_sites, mask=None):
+        if mask is None:
+            mask = np.ones_like(pca, dtype=bool)
+        rmax = self.structure.get_neighbors(1).distances.max()
+        pot_conf = {
+            'deltaSplineBins': 0.001,
+            'elements': ['H'],
+            'embeddings': {'ALL': {'drho_core_cut': 250,
+                                'fs_parameters': [1, 1],
+                                'ndensity': 1,
+                                'npot': 'FinnisSinclair',
+                                'rho_core_cut': 200000},
+                        },
+            'bonds': {
+                'ALL': {'NameOfCutoffFunction': 'cos',
+                            'core-repulsion': [10000.0, 5.0],
+                            'dcut': 0.01,
+                            'radbase': 'ChebPow',
+                            # 'nradbase': 10,
+                            'radparameters': [2.0],
+                            'rcut': 1.1 * rmax},
+            },
+            'functions': {
+                    'number_of_functions_per_element': 200,
+                    'UNARY':
+                    # simple default from Yury
+                        { 'nradmax_by_orders': [ 15, 6, 4, 3, 2, 2 ],
+                          'lmax_by_orders':    [ 0 , 3, 3, 2, 2, 1 ]}
+            }
+        }
+        calc = pyace.PyACECalculator(
+                pyace.create_multispecies_basis_config(pot_conf)
+        )
+        struct = self.structure.copy()
+        struct[:] = 'H'
+        struct.calc = calc
+        struct.get_potential_energy()
+
+        r1 = calc.ace.basis_projections_rank1
+        rn = calc.ace.basis_projections
+        descr = np.concatenate(
+            [np.array(r1)[:,:,0],
+            np.array(rn)[:,:,0]],
+            axis=1
+        )
+
+        pca = PCA(whiten=True, n_components=1).fit_transform(descr).ravel()
+
+        # first locate the mode of the pca distribution with a KDE
+        # (scipy.stats.mode is a bit flaky without rounding...)
+        k = ss.gaussian_kde(pca)
+        x = np.linspace(pca.min(), pca.max(), 1000)
+        p, _ = si.find_peaks(k.pdf(x))
+        # pick the largest peak as the mode
+        mode = x[p[si.peak_prominences(k.pdf(x), p)[0].argmax()]]
+        # sort all atoms by their deviation from the mode (ie. bulk atoms)
+        SA = np.argsort(abs(pca-mode))
+        # the mask needs to be sorted in the same way, then we pick num_sites
+        # atoms that are furthest from the mode
+        sites = SA[mask[SA]][-num_sites:]
+        if len(sites) <= 26:
+            return dict(list(zip(string.ascii_uppercase, sites)))
+        else:
+            raise ValueError("Lazy developer error!")
+
+    def plot_sites(self):
+        I = np.zeros(len(self.structure))
+        for i in self.locations.values():
+            I[i] = 1
+
+        return self.structure.plot3d(scalar_field=I)
 
     def make_structures(self):
         structure = self.structure
