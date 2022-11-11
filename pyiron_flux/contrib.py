@@ -16,7 +16,7 @@ from .base import (
         IterableProperty,
         StructureProperty
 )
-from .util import get_table
+from .util import get_table, symlink_project
 from .job import MlipFactory
 
 
@@ -75,6 +75,38 @@ class StaticStructureFlow(WorkFlow):
         ).get_dataframe()
         df['E'] = df.energy_pot
         return df
+
+class StructureFlow(WorkFlow):
+    """
+    Runs a job on every structure.
+    """
+
+    job = ScalarProperty('job')
+    structures = StructureProperty('structures')
+    numeric_job_names = ScalarProperty('number_of_structures', default=False)
+
+    def run(self, delete_existing_job=False, delete_aborted_job=True):
+        self.job.project = self.project.create_group('structures')
+        symlink_project(self.job.project)
+        istructures = tqdm(
+                self.structures.iter_structures(),
+                desc="Structures",
+                total=self.structures.number_of_structures
+        )
+        for i, structure in enumerate(istructures):
+            def modify(j):
+                j['user/name'] = self.structures['identifier', i]
+                return j
+
+            if self.numeric_job_names:
+                name = f'structure_{i}'
+            else:
+                name = self.structures['identifier', i]
+            self.job.run(
+                    name=name, modify=modify, structure=structure,
+                    delete_existing_job=delete_existing_job,
+                    delete_aborted_job=delete_aborted_job
+            )
 
 class SegregationFlow(WorkFlow):
     structure = ScalarProperty('structure')
