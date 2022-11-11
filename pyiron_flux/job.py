@@ -166,10 +166,12 @@ class DftFactory(JobFactory):
                 *self.storage.get('kpoints_args', ()),
                 **self.storage.get('kpoints_kwargs', {})
         )
-        job.set_occupancy_smearing(
-                *self.storage.get('occupancy_smearing_args', ()),
-                **self.storage.get('occupancy_smearing_kwargs', {})
-        )
+        if 'occupancy_smearing_args' in self.storage \
+                or 'occupancy_smearing_kwargs' in self.storage:
+            job.set_occupancy_smearing(
+                    *self.storage.get('occupancy_smearing_args', ()),
+                    **self.storage.get('occupancy_smearing_kwargs', {})
+            )
         if 'empty_states_per_atom' in self.storage:
             job.input['EmptyStates'] = \
                     len(structure) * self.storage.empty_states_per_atom + 3
