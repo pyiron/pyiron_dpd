@@ -193,10 +193,23 @@ class VaspFactory(DftFactory):
     def _get_hamilton(self):
         return 'Vasp'
 
+    def minimize_volume(self):
+        self.calc_minimize(pressure=0.0, volume_only=True)
+
+    def minimize_cell(self):
+        self.calc_minimize()
+        self.incar['ISIF'] = 5
+
+    def minimize_internal(self):
+        self.calc_minimize()
+
+    def minimize_all(self):
+        self.calc_minimize(pressure=0.0)
+
     def _prepare_job(self, job, structure):
         job = super()._prepare_job(job, structure)
         for k, v in self.incar.items():
-            job.input_.incar[k] = v
+            job.input.incar[k] = v
         if self.storage.nband_nelec_map is not None:
             # weird structure sometimes require more bands
             # HACK: for Mg/Al/Ca, since Ca needs a lot of electrons
