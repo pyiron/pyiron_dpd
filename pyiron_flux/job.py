@@ -63,6 +63,15 @@ class JobFactory(HasStorage, ABC):
         for key, value in kwargs.items():
             self.storage.input[key] = value
 
+    def __getattr__(self, name):
+        if name.startswith('__') and name.endswith('__'):
+            raise AttributeError(name)
+        def wrapper(*args, **kwargs):
+            d = self.storage.create_group(f'methods/{name}')
+            d['args'] = args
+            d['kwargs'] = kwargs
+        return wrapper
+
     def _prepare_job(self, job, structure):
         if structure is not None:
             job.structure = structure
@@ -74,6 +83,8 @@ class JobFactory(HasStorage, ABC):
             job.server.run_time = self.run_time
         for k, v in self.storage.input.items():
             job.input[k] = v
+        for meth, ka in self.storage.methods.items():
+            getattr(job, meth)(*ka.args, **ka.kwargs)
         return job
 
     def make(self,
