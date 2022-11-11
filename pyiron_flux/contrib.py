@@ -318,7 +318,8 @@ class SegregationFlow(WorkFlow):
             j.potential = self.potential
             #j.calc_static()
             if self.calctype == 'minimize':
-                j.calc_minimize(pressure=getattr(self, 'pressure', None))
+                j.calc_minimize(pressure=getattr(self, 'pressure', None),
+                                ionic_force_tolerance=1e-7)
             elif self.calctype == 'static':
                 j.calc_static()
             else:
