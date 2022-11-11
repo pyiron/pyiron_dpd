@@ -86,15 +86,15 @@ class HandyMan:
     def restart(self, job):
         new = job.restart()
         # avoids problems with restart files if original job is deleted
-        new.save()
-        new._restart_file_list = []
-        new._restart_file_dict = {}
         return new
 
     def fix_job(self, tool, job):
         new_job = self.restart(job)
 
         tool.fix(job, new_job)
+        new_job.save()
+        new_job._restart_file_list = []
+        new_job._restart_file_dict = {}
 
         cores = job.server.cores
         mid = job.master_id
