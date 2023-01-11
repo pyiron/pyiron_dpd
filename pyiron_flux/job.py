@@ -83,8 +83,9 @@ class JobFactory(HasStorage, ABC):
             job.server.run_time = self.run_time
         for k, v in self.storage.input.items():
             job.input[k] = v
-        for meth, ka in self.storage.methods.items():
-            getattr(job, meth)(*ka.args, **ka.kwargs)
+        if 'methods' in self.storage:
+            for meth, ka in self.storage.methods.items():
+                getattr(job, meth)(*ka.args, **ka.kwargs)
         return job
 
     def make(self,
