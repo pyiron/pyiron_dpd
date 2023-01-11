@@ -104,7 +104,7 @@ class JobFactory(HasStorage, ABC):
                 delete_existing_job=delete_existing_job,
                 delete_aborted_job=delete_aborted_job
         )
-        if not job.status.initialized: return job
+        if not job.status.initialized: return None
 
         job = self._prepare_job(job, structure)
         job = modify(job)
