@@ -11,6 +11,7 @@ class JobFactory(HasStorage, ABC):
     def __init__(self):
         super().__init__()
         self.storage.create_group('input')
+        self._project_nodes = None
 
     @property
     def project(self):
@@ -19,6 +20,7 @@ class JobFactory(HasStorage, ABC):
     @project.setter
     def project(self, value):
         self._project = value
+        self._project_nodes = None
 
     @property
     def cores(self):
@@ -88,6 +90,11 @@ class JobFactory(HasStorage, ABC):
                 getattr(job, meth)(*ka.args, **ka.kwargs)
         return job
 
+    def _project_list_nodes(self):
+        if self._project_nodes is None:
+            self._project_nodes = self.project.list_nodes()
+        return self._project_nodes
+
     def make(self,
              name: str, modify: Callable[[GenericJob], GenericJob],
              structure: Atoms,
@@ -95,8 +102,8 @@ class JobFactory(HasStorage, ABC):
     ) -> Optional[GenericJob]:
         # short circuit if job already successfully ran
         if not delete_existing_job and (
-                name in self.project.list_nodes() \
-                    and self.project.get_job_status(name) == 'finished'
+                name in self._project_list_nodes() \
+                    and self.project.get_job_status(name) in ['finished', 'submitted']
         ):
             return None
 
@@ -106,6 +113,9 @@ class JobFactory(HasStorage, ABC):
                 delete_aborted_job=delete_aborted_job
         )
         if not job.status.initialized: return None
+
+        # adding new jobs, invalidate node cache
+        self._project_nodes = None
 
         job = self._prepare_job(job, structure)
         job = modify(job)
