@@ -8,6 +8,7 @@ from itertools import (
 import numpy as np
 import scipy.stats as ss
 import scipy.signal as si
+from scipy.spatial import ConvexHull
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -396,10 +397,37 @@ class SegregationFlow(WorkFlow):
                 color='b',
         )
 
-    def get_chem_pot_data(self, query=None, chem_pot=None, only_minima=True):
+    def plot_excess_energies(self, query=None):
         df = self.analyze()
         if query is not None:
             df = df.query(query)
+
+        c = df.coverage / df.coverage.max()
+        cmin = df.coverage.min()
+        cmax = df.coverage.max()
+        if cmax < len(self.locations):
+            logger.warn('Largest coverage is less then full coverage, excess energies probably wrong!')
+        e0 = df.query('coverage==@cmin')['[E]N'].min()
+        e1 = df.query('coverage==@cmax')['[E]N'].min()
+        df['excess'] = df['[E]N'] - (1-c)*e0 - e1 * c
+
+        sns.scatterplot(
+            data=df,
+            x='coverage', y='excess'
+        )
+
+        ch = ConvexHull(df[['coverage', 'excess']].to_numpy())
+        for s in ch.simplices:
+            if any(ch.points[s, 1] > 0): continue
+            plt.plot(*ch.points[s].T, 'ro-', markersize=10, zorder=-1)
+
+        return df
+
+    def get_chem_pot_data(self, query=None, chem_pot=None, only_minima=True, df=None):
+        if df is None:
+            df = self.analyze()
+            if query is not None:
+                df = df.query(query)
         if only_minima:
             df = df.loc[df.groupby('coverage')['[E]N/unit'].idxmin()]
         if chem_pot is None:
@@ -469,10 +497,16 @@ class SegregationFlow(WorkFlow):
         lower = chem_df.loc[chem_df.groupby('Δµ').E_seg_mu.idxmin()]
         plt.plot(lower['Δµ'], lower['E_seg_mu'], 'k-', lw=10, alpha=.4, zorder=-1)
 
-    def get_free_energies(self, temperatures, include_distribution=False, query=None):
-        df = self.analyze()
-        if query is not None:
-            df = df.query(query)
+    def get_free_energies(self,
+            temperatures,
+            include_distribution=False,
+            query=None,
+            df=None
+    ):
+        if df is None:
+            df = self.analyze()
+            if query is not None:
+                df = df.query(query)
         kB = 8.6173e-5
         def get_free_energy(df, T):
             # E = df['E/unit'].to_numpy()
@@ -481,17 +515,43 @@ class SegregationFlow(WorkFlow):
             I =  E - E.min() < 10 * kB * T
             E = E[I]
             R = df.repeat[I]
-            E = np.concatenate([ [e] * r for e, r in zip(E, R) ])
-            p = 1 / np.exp( -(E[None, :] - E[:, None])/kB/T ).sum(axis=-1)
+            if 'degeneracy' in df.columns:
+                D = df.degeneracy[I]
+                n = R * D
+            else:
+                n = R
+
+            # p = 1 / np.exp( -(E[None, :] - E[:, None])/kB/T ).sum(axis=-1)
+            # p /= p.sum()
+
+            p = n * np.exp( -(E-E.min())/kB/T )
             p /= p.sum()
-            S = -kB * np.sum( [pp * np.log(pp) if pp > 0 else 0 for pp in p] )
+
             U = (E * p).sum()
+
+            # naive way, but makes a list from an array
+            # S = -kB * np.sum( [pp * np.log(pp) if pp > 0 else 0 for pp in p] )
+            if include_distribution:
+                # if we need to keep the probability intact, make a subset
+                # (copy) and work on that
+                Ip = p>0
+                p0 = p[Ip]
+                n0 = n[Ip]
+                S = -kB * np.sum(p0 * np.log(p0/n0))
+            else:
+                # if we do not need the probability, set
+                Ip = p==0
+                n[Ip] = 1
+                p[Ip] = 1
+                # because 1*log(1) = 0*log(0) = 0, but without warning, and we
+                # get to avoid a copy
+                S = -kB * np.sum(p * np.log(p/n))
             F = U - T * S
             if include_distribution:
-                return pd.DataFrame({'F': [F], 'U': [U], 'S': [S], 'T': [T],
-                                     'E': [E], 'p': [p]})
+                return pd.Series({'F': F, 'U': U, 'S': S, 'T': T,
+                                  'E': E, 'p': p})
             else:
-                return pd.DataFrame({'F': [F], 'U': [U], 'S': [S], 'T': [T]})
+                return pd.Series({'F': F, 'U': U, 'S': S, 'T': T})
         return pd.concat([df.groupby('coverage').apply(get_free_energy, T=T)
                             for T in temperatures]).reset_index()
 
@@ -513,36 +573,89 @@ class SegregationFlow(WorkFlow):
     def get_free_chem_pot_minima(self, free_chem_df):
         return free_chem_df.loc[free_chem_df.groupby(['Δµ', 'T']).F_seg_mu.idxmin()]
 
-    def plot_defect_phase_diagram_free(self, temperatures, chem_pot, query=None):
-        free_df = self.get_free_energies(temperatures, query=query)
-        free_chem_df = self.get_free_chem_pot_data(free_df, chem_pot)
-        free_chem_min_df = self.get_free_chem_pot_minima(free_chem_df)
-        n = 20
-        T_all = free_chem_min_df['T'].unique()
-        T_sample = sorted(T_all)[::len(T_all)//n]
+    def plot_defect_phase_diagram_free(
+            self,
+            temperatures,
+            query=None,
+            normalize=True
+    ):
+        df = self.analyze()
+        if query is not None:
+            df = df.query(query)
 
-        plt.figure()
+        norm = 1
+        unit = 'defect unit'
+        if normalize:
+            try:
+                norm = self.normalization
+                unit = self.normalization_unit
+            except AttributeError:
+                norm = 1
+                unit = 'defect unit'
+
+        def find_sections(df, T):
+            # fdf = df.groupby('coverage').apply(mean_u, T=T).reset_index()
+            fdf = self.get_free_energies([T], df=df)
+            half = [[r.coverage, 1, -r.F] for _, r in fdf.iterrows()]
+            half += [[-1, 0, -500], [0, -1, -500]]
+            # half += [[-1, 0, -0], [0, -1, -50]]
+            half = np.array(half)
+            hs = HalfspaceIntersection(half, np.array([-50,-50]))
+            i = hs.intersections.T[0]
+            i = np.sort(i)[2:-1]
+            return i, hs, fdf.coverage.to_numpy()
+
+        color_norm = Normalize(
+                df.coverage.min()/norm,
+                df.coverage.max()/norm
+        )
+        cm = plt.colormaps.get('viridis')
+
+        dd = []
+        for T in temperatures:
+            i, hs, c = find_sections(df, T)
+            tt = list(zip(hs.dual_vertices[:-1],hs.dual_vertices[1:]))[:-2]
+            t = ['_'.join(map(str,r)) for r in tt]
+            d = pd.DataFrame({
+                'mu': i,
+                'type': t,
+                'left': [c[x[0]] for x in tt],
+                'right': [c[x[1]] for x in tt]
+            })
+            d['T'] = T
+            dd.append(d)
+        s = pd.concat(dd, ignore_index=True)
+        s['phase'] = s.right - s.left > 1
+
+        for c, cc in zip(
+                df.coverage.unique(),
+                cm(color_norm(df.coverage.unique()/norm))
+        ):
+            left =  s.query('left==@c').mu
+            right = s.query('right==@c').mu
+            Ts = sorted(s.query('left==@c or right==@c')['T'].unique())
+            if len(left)==0:
+                left = right
+                right = s.mu.max()
+            elif len(right)==0:
+                right = left
+                left = s.mu.min()
+            plt.fill_betweenx(Ts, left, right, color=cc)
+
+        plt.colorbar(
+                plt.cm.ScalarMappable(norm=color_norm, cmap=cm),
+                label=f'Coverage [{self.segregant}/{unit}]'
+        )
+
         sns.lineplot(
-            data=free_chem_min_df.query('T.isin(@T_sample)'),
-            x='Δµ', y='F_seg_mu',
-            hue='T', 
-            style='coverage'
+            data=s.query('phase'),
+            x='mu', y='T', c='r', linewidth=5,
+            estimator=None, units=s.type, sort=False
         )
 
-        try:
-            norm = self.normalization
-            unit = self.normalization_unit
-        except AttributeError:
-            norm = 1
-            unit = 'defect unit'
-        plt.figure()
-        dia = free_chem_min_df.pivot(
-            index='Δµ', columns='T', values='coverage'
-        )
-        plt.matshow(dia.to_numpy().T/norm, aspect = 'auto', interpolation='nearest',
-                    extent = (dia.index.min(), dia.index.max(),
-                              dia.columns.min(), dia.columns.max()),
-                    origin='lower') #len(dia.index)/len(dia.columns))
-        plt.colorbar(label=f'Coverage [{self.segregant}/{unit}]')
+        plt.xlim(s['mu'].min(), s['mu'].max())
+        plt.ylim(s['T'].min(), s['T'].max())
+
         plt.xlabel('$\Delta\mu$ [eV]')
         plt.ylabel('$T$ [K]')
+        return s
