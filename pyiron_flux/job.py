@@ -139,9 +139,10 @@ class JobFactory(HasStorage, ABC):
 
 class GenericJobFactory(JobFactory):
 
-    def __init__(self, hamilton):
+    def __init__(self, hamilton=None):
         super().__init__()
-        self.storage.hamilton = hamilton
+        if hamilton is not None:
+            self.storage.hamilton = hamilton
 
     def _get_hamilton(self):
         return self.storage.hamilton
@@ -234,7 +235,7 @@ class SphinxFactory(DftFactory):
     def _get_hamilton(self):
         return 'Sphinx'
 
-class MlipFactory(JobFactory):
+class LammpsFactory(JobFactory):
 
     @property
     def potential(self):
@@ -245,9 +246,14 @@ class MlipFactory(JobFactory):
         self.storage.potential = value
 
     def _get_hamilton(self):
-        return "LammpsMlip"
+        return "Lammps"
 
     def _prepare_job(self, job, structure):
         super()._prepare_job(job, structure)
         job.potential = self.potential
         return job
+
+class MlipFactory(LammpsFactory):
+
+    def _get_hamilton(self):
+        return "LammpsMlip"
