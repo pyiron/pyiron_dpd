@@ -190,7 +190,7 @@ class VaspDisableIsymTool(VaspTool):
     """
 
     def match(self, job):
-        return any([
+        return job.input.incar['ISYM'] != 0 and any([
             ' inverse of rotation matrix was not found (increase SYMPREC)       5\n' in job['error.out'],
             ' POSMAP internal error: symmetry equivalent atom not found,\n'          in job['error.out'],
             ' RHOSYG internal error: stars are not distinct, try to increase SYMPREC to e.g. \n' in job['error.out'],
