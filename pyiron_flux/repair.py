@@ -365,6 +365,18 @@ class VaspEddrmmTool(VaspTool):
             pass
 
 
+class VaspSgrconTool(VaspTool):
+    """
+    custodian recommends changing to a gamma centered mesh.
+    """
+    def match(self, job):
+        return job.input.kpoints[2] == 'Monkhorst_Pack' \
+                and any('VERY BAD NEWS! internal error in subroutine SGRCON' in l
+                            for l in job['error.out'])
+
+    def fix(self, old, new):
+        new.set_kpoints(old.kpoint_mesh, scheme='GC')
+        return new
 
 # class VaspLongCellAmin(VaspTool):
     # def match(self, job):
