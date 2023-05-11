@@ -326,16 +326,20 @@ class VaspMemoryErrorTool(VaspTool):
     out.  Increase the number of cores to have more nodes/memory available.
     """
 
+    def __init__(self, factor=2, max_cores=160):
+        self._factor    = factor
+        self._max_cores = max_cores
+
     def match(self, job):
         malloc = 'malloc(): corrupted top size\n' in job['error.out']
         forrtl = 'forrtl: error (78): process killed (SIGTERM)\n' in job['error.out']
         # coredump = 'Image              PC                Routine Line Source \n' in job['error.out']
         # return malloc or (forrtl and coredump)
-        too_many_cores = job.server.cores > 160
+        too_many_cores = job.server.cores > self._max_cores
         return (malloc or forrtl) and not too_many_cores
     def fix(self, old_job, new_job):
-        if old_job.server.cores < 40 * 4:
-            new_cores = old_job.server.cores * 2
+        if old_job.server.cores < self._max_cores:
+            new_cores = old_job.server.cores * self._factor
         else:
             new_cores = old_job.server.cores
         new_job.server.cores = new_cores
