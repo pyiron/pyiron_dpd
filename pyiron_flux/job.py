@@ -105,7 +105,7 @@ class JobFactory(HasStorage, ABC):
     def make(self,
              name: str, modify: Callable[[GenericJob], GenericJob],
              structure: Atoms,
-             delete_existing_job=False, delete_aborted_job=True
+             delete_existing_job=False, delete_aborted_job=True,
     ) -> Optional[GenericJob]:
         # short circuit if job already successfully ran
         if not delete_existing_job and (
@@ -235,7 +235,7 @@ class VaspFactory(DftFactory):
             elems = {'Mg', 'Al', 'Ca'}
             if elems.union(set(structure.get_chemical_symbols())) == elems:
                 nelect = sum(self.storage.nband_nelec_map[el] for el in structure.get_chemical_symbols())
-                j.input.incar['NBANDS'] = nelect + len(structure)
+                job.input.incar['NBANDS'] = nelect + len(structure)
         return job
 
 class SphinxFactory(DftFactory):
