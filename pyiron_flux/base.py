@@ -7,9 +7,12 @@ from pyiron_atomistics.atomistics.structure.structurestorage import StructureSto
 
 class FlexibleProperty:
 
-    def __init__(self, name, storage_attribute='input'):
+    def __init__(self, name=None, storage_attribute='input'):
         self._name = name
         self._storage_attribute = storage_attribute
+
+    def __set_name__(self, obj, name):
+        self._name = name
 
     @property
     def type(self):
@@ -52,7 +55,7 @@ class FlexibleProperty:
         instance.sync()
 
 class ScalarProperty(FlexibleProperty):
-    def __init__(self, name, type=object, default=None, storage_attribute='input'):
+    def __init__(self, name=None, type=object, default=None, storage_attribute='input'):
         super().__init__(name=name, storage_attribute=storage_attribute)
         self._type = type
         self._default = default
@@ -97,7 +100,7 @@ class StructureProperty(FlexibleProperty):
 
 class IterableProperty(FlexibleProperty):
 
-    def __init__(self, name, type=None, storage_attribute='input'):
+    def __init__(self, name=None, type=None, storage_attribute='input'):
         super().__init__(name=name, storage_attribute=storage_attribute)
         self._type = type
 
@@ -148,5 +151,3 @@ class WorkFlow:
     def sync(self):
         self.project.data.write()
 
-    def __del__(self):
-        self.sync()
