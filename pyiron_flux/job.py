@@ -121,8 +121,11 @@ class JobFactory(HasStorage, ABC):
         )
         if not job.status.initialized: return None
 
+        # FIXME: think about; when submitting large number of jobs with this
+        # function that are all new, we can lose up 25% of run time by
+        # recomputing this every time
         # adding new jobs, invalidate node cache
-        self._project_nodes = None
+        # self._project_nodes = None
 
         job = self._prepare_job(job, structure)
         job = modify(job)
