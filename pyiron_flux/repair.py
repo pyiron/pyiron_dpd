@@ -82,6 +82,13 @@ class VaspNbandsTool(VaspTool):
                 math.ceil((old_states - n_elect//2) * self._state_factor)
         )
 
+        try:
+            new_job.restart_file_list.append(old_job.get_workdir_file("CHGCAR"))
+            new_job.input.incar["ICHARG"] = 1
+        except FileNotFoundError:
+            # run didn't include CHGCAR file
+            pass
+
     def hamilton(self):
         return "Vasp"
 
@@ -346,6 +353,13 @@ class VaspEddrmmTool(VaspTool):
 
     def fix(self, old, new):
         new.input.incar['ALGO'] = 'Normal'
+        try:
+            new.restart_file_list.append(old.get_workdir_file("CHGCAR"))
+            new.input.incar["ICHARG"] = 1
+        except FileNotFoundError:
+            # run didn't include CHGCAR file
+            pass
+
 
 
 # class VaspLongCellAmin(VaspTool):
