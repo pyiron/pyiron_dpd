@@ -14,6 +14,10 @@ class JobFactory(HasStorage, ABC):
         self._project_nodes = None
 
     @property
+    def attr(self):
+        return self.storage.create_group('attributes')
+
+    @property
     def project(self):
         return self._project
 
@@ -88,6 +92,9 @@ class JobFactory(HasStorage, ABC):
         if 'methods' in self.storage:
             for meth, ka in self.storage.methods.items():
                 getattr(job, meth)(*ka.args, **ka.kwargs)
+        if 'attributes' in self.storage:
+            for attr, val in self.storage.attributes.items():
+                setattr(job, attr, val)
         return job
 
     def _project_list_nodes(self):
