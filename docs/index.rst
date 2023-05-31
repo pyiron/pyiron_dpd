@@ -1,11 +1,11 @@
-.. pyiron_module_template documentation master file
+.. pyiron_dpd documentation master file
 
 .. _index:
 
 
-======================
-pyiron_module_template
-======================
+=========================
+pyiron_dpd
+=========================
 
 .. toctree::
    :hidden:

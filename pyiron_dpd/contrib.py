@@ -35,8 +35,8 @@ from .base import (
 from .util import get_table, symlink_project
 from .job import MlipFactory
 
-import pyiron_flux.segregation.util as util
-from pyiron_flux.segregation.util import (
+import .segregation.util as util
+from .segregation.util import (
         make_ace,
         get_ace_descr
 )
