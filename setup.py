@@ -27,7 +27,17 @@ setup(
     keywords='pyiron',
     packages=find_packages(exclude=["*tests*", "*docs*", "*binder*", "*conda*", "*notebooks*", "*.ci_support*"]),
     install_requires=[
-        'pyiron_base'
+        'pyiron_base==0.5.39',
+        'pyiron_atomistic==0.2.67',
+        'pyiron_contrib==0.1.10',
+        'maxvolpy==0.3.8',
+        'pyiron_data==0.0.22',
+        'seaborn>=0.12',
+        'scikit-learn>=1',
+        'tqdm',
+        'numpy',
+        'scipy',
+        'matplotlib',
     ],
     cmdclass=versioneer.get_cmdclass(),
 
