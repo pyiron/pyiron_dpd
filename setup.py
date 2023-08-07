@@ -29,7 +29,7 @@ setup(
     install_requires=[
         'pyiron_base==0.5.39',
         'pyiron_atomistic==0.2.67',
-        'pyiron_contrib==0.1.10',
+        'pyiron_contrib==0.1.12',
         'maxvolpy==0.3.8',
         'pyiron_data==0.0.22',
         'seaborn>=0.12',
