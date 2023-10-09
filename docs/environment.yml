@@ -3,7 +3,7 @@ channels:
 dependencies:
 - ipykernel
 - nbsphinx
-- pyiron_base =0.5.39
+- pyiron_base =0.6.7
 - pyiron_atomistics =0.2.67
 - pyiron_contrib =0.1.10
 - pyiron_data =0.0.22
