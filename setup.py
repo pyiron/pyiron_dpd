@@ -27,7 +27,7 @@ setup(
     keywords='pyiron',
     packages=find_packages(exclude=["*tests*", "*docs*", "*binder*", "*conda*", "*notebooks*", "*.ci_support*"]),
     install_requires=[
-        'pyiron_base==0.5.39',
+        'pyiron_base==0.6.9',
         'pyiron_atomistic==0.2.67',
         'pyiron_contrib==0.1.10',
         'maxvolpy==0.3.8',
